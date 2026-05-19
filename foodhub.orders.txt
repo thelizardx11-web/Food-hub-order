@@ -1,0 +1,98 @@
+
+-- Create database 
+CREATE DATABASE foodhub_order;
+USE foodhub_order;
+
+-- Create table 
+CREATE TABLE orders_data (
+    order_id INT PRIMARY KEY,
+    customer_id INT,
+    restaurant_name VARCHAR(100),
+    cuisine_type VARCHAR(50),
+    cost_of_the_order DECIMAL(10,2),
+    day_of_the_week VARCHAR(20),
+    rating INT,
+    food_preparation_time INT,
+    delivery_time INT
+);
+
+SELECT * FROM foodhub;
+
+-- 1. SLEF JOIN
+SELECT 
+    a.customer_id,
+    a.restaurant_name AS first_restaurant,
+    b.restaurant_name AS second_restaurant
+FROM orders_data a
+JOIN orders_data b
+    ON a.customer_id = b.customer_id
+    AND a.order_id <> b.order_id
+LIMIT 10;
+
+SELECT 
+    customer_id,
+    COUNT(order_id) AS total_orders
+FROM orders_data
+GROUP BY customer_id
+HAVING COUNT(order_id) > 1;
+
+SELECT * FROM foodhub;
+
+-- INNER JOIN 
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    customer_name VARCHAR(100),
+    city VARCHAR(50)
+);
+
+INSERT INTO customers (customer_id, customer_name, city)
+VALUES 
+(1, 'Rahul', 'Delhi'),
+(2, 'Sneha', 'Mumbai'),
+(3, 'Amit', 'Bangalore');
+
+SELECT 
+    c.customer_id,
+    c.customer_name,
+    COUNT(o.order_id) AS total_orders,
+    SUM(o.cost_of_the_order) AS total_spend
+FROM customers c
+INNER JOIN orders_data o
+    ON c.customer_id = o.customer_id
+GROUP BY c.customer_id, c.customer_name
+ORDER BY total_spend DESC;
+
+-- 3. Group + Having 
+SELECT 
+     customer_id,
+     COUNT(order_id) AS total_orders,
+     SUM(cost_of_the_order) AS total_spend
+FROM orders_data
+GROUP BY customer_id
+HAVING COUNT(order_id) > 1
+ORDER BY total_spend DESC;
+
+-- 4. WINDOW FUNCTION 
+SELECT 
+    customer_id,
+    order_id,
+    day_of_the_week,
+    ROW_NUMBER() OVER(PARTITION BY customer_id ORDER BY day_of_the_week) AS row_num
+FROM orders_data;
+
+WITH ranked_customers AS (
+    SELECT 
+        restaurant_name,
+        customer_id,
+        SUM(cost_of_the_order) AS total_spend,
+        RANK() OVER (
+            PARTITION BY restaurant_name 
+            ORDER BY SUM(cost_of_the_order) DESC
+        ) AS rank_in_restaurant
+    FROM orders_data
+    GROUP BY restaurant_name, customer_id
+)
+SELECT *
+FROM ranked_customers
+WHERE rank_in_restaurant <= 3
+ORDER BY restaurant_name, rank_in_restaurant;
